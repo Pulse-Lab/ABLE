@@ -1,0 +1,3 @@
+[submodule "ABLE-sound"]
+	path = ABLE-sound
+	url = https://github.com/Pulse-Lab/ABLE-sound.git

@@ -11,6 +11,8 @@ var knownOpts = {
     "unrealPort" : [Number, null],
     "pythonIP" : [String, null],
     "pythonPort" : [Number, null],
+    "scIP" : [String, null],
+    "scPort" : [Number, null],
     "help": Boolean
 };
 
@@ -44,6 +46,10 @@ var unrealIP = parsed["unrealIP"]?parsed["unrealIP"]:"127.0.0.1";
 var unrealPort = parsed["unrealPort"]?parsed["unrealPort"]:8000;
 var pythonIP = parsed["pythonIP"]?parsed["pythonIP"]:"127.0.0.1";
 var pythonPort = parsed["pythonPort"]?parsed["pythonPort"]:9000;
+var scIP = parsed["scIP"]?parsed["scIP"]:"127.0.0.1"
+var scPort = parsed["scPort"]?parsed["scPort"]:10000
+
+
 
 var unrealOsc = new osc.UDPPort({
   localAddress: "0.0.0.0",
@@ -59,9 +65,16 @@ var pythonOsc = new osc.UDPPort({
   remotePort: pythonPort
 });
 
+var scOsc = new osc.UDPPort({
+  localAddress: "0.0.0.0",
+  localPort: 10002, // this node program shouldn't be receiving osc back at all
+  remoteAddress: scIP,
+  remotePort: scPort
+})
 
 pythonOsc.open();
 unrealOsc.open();
+scOsc.open();
 
 
 // Correspond bluetooth services and characteristic uuids to their handler functions
@@ -228,12 +241,40 @@ function checkAndSendFrame (data, sensor, foot){
             frame.heel.value,
             frame.toe.value]
     }
+    console.log(pythonPort);
     try{
       pythonOsc.send(msg);
       console.log("############################ Sent frame: "+foot+": "+frames[foot].frameCount)
     } catch (e){
       console.log("ERROR: could not send frame message over osc to python for: "+foot)
     }
+
+
+    var toe = {
+      address: "/"+foot+"/toe",
+      args:[frame.toe.value]
+    }
+
+    try{
+      console.log(toe)
+      scOsc.send(toe);
+    } catch(e){
+      console.log("ERRROR couldn't send to sc osc :S: "+e)
+    }
+
+    var heel = {
+      address: "/"+foot+"/heel",
+      args:[frame.heel.value]
+    }
+
+    try{
+      console.log(heel)
+      scOsc.send(heel);
+    } catch(e){
+      console.log("ERRROR couldn't send to sc osc :S: "+e)
+    }
+
+
     frames[foot].frameCount++;
     frames[foot][data.frameNum]=undefined
   }
