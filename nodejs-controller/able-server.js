@@ -65,7 +65,7 @@ var scPort = parsed["scPort"]?parsed["scPort"]:10000
 var httpPort = parsed["httpPort"]?parsed["httpPort"]:8080;
 
 // set up HTTP server
-var dir = __dirname+"\\..\\web-client\\build"
+var dir = __dirname+"/../web-client"
 expressServer.use(express.static(dir));
 console.log("serving web-client: "+dir)
 server.on('request', expressServer)
@@ -92,7 +92,7 @@ function onError (data, r){
 }
 
 function onClose(data, r){
-  
+
 }
 
 // Set up OSC
