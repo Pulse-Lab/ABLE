@@ -2,6 +2,17 @@
 var noble = require('noble');
 var osc = require('osc')
 var nopt = require('nopt')
+var http = require('http');
+var express = require('express');
+var WebSocket = require('ws')
+
+var server = http.createServer();
+var expressServer = express();
+
+
+
+
+
 
 
 // parse command-line options
@@ -13,6 +24,7 @@ var knownOpts = {
     "pythonPort" : [Number, null],
     "scIP" : [String, null],
     "scPort" : [Number, null],
+    "httpPort": [Number,null],
     "help": Boolean
 };
 
@@ -22,6 +34,7 @@ var shortHands = {
     "pIP" : ["--pythonIP"],
     "uP" : ["--unrealPort"],
     "pP" : ["--pythonPort"],
+    "hP" : ["--httpPort"],
     "h" : ["--help"]
 };
 
@@ -29,28 +42,60 @@ var parsed = nopt(knownOpts,shortHands,process.argv,2);
 if(parsed['help']!=null) {
     process.stderr.write("\n");
     process.stderr.write("ABLE server.js usage:\n\n");
-    process.stderr.write(" --help (-h)                    this help message\n");
+    process.stderr.write(" --help (-h)                    this help message.\n");
+    process.stderr.write(" --verbose (-v) verbose debug messages/printing.\n");
     process.stderr.write(" --unrealIP    <String> (-uIP)  ip address of Unreal engine     (default: 127.0.0.1)\n");
-    process.stderr.write(" --unrealPort  <String> (-uP)   osc port of Unreal engine       (default: 8000)\n");
+    process.stderr.write(" --unrealPort  <Number> (-uP)   osc port of Unreal engine       (default: 8000)\n");
     process.stderr.write(" --pythonIP    <String> (-pIP)  ip address of python receiver   (default: 127.0.0.1)\n");
-    process.stderr.write(" --pythonPort  <String> (-pP)   osc port of python receiver     (default: 9000)\n\n");
+    process.stderr.write(" --pythonPort  <Number> (-pP)   osc port of python receiver     (default: 9000)\n\n");
+    process.stderr.write(" --httpPort  <Number> (-hP)  port on which httpserver (default: 8080)\n\n");
     process.exit(1);
 }
 
 var verbose = parsed['verbose']!=null
 
 
-// Set up osc
-
+// Set up defaults
 var unrealIP = parsed["unrealIP"]?parsed["unrealIP"]:"127.0.0.1";
 var unrealPort = parsed["unrealPort"]?parsed["unrealPort"]:8000;
 var pythonIP = parsed["pythonIP"]?parsed["pythonIP"]:"127.0.0.1";
 var pythonPort = parsed["pythonPort"]?parsed["pythonPort"]:9000;
 var scIP = parsed["scIP"]?parsed["scIP"]:"127.0.0.1"
 var scPort = parsed["scPort"]?parsed["scPort"]:10000
+var httpPort = parsed["httpPort"]?parsed["httpPort"]:8080;
 
+// set up HTTP server
+var dir = __dirname+"\\..\\web-client\\build"
+expressServer.use(express.static(dir));
+console.log("serving web-client: "+dir)
+server.on('request', expressServer)
+server.listen(httpPort, function(){console.log("http server listening")})
 
+var wsServer = new WebSocket.Server({server: server});
 
+var uid =0;
+var numClients=0;
+var clients = {};
+wsServer.on('connection', function(r){
+  uid++;
+  r.uid = uid;
+  r.on('message', (x)=>onMessage(x,r));
+  r.on('error', (x)=>onError(x,r));
+  r.on('close', (x)=>onClose(x,r));
+});
+
+function onMessage(data, r){
+
+}
+function onError (data, r){
+
+}
+
+function onClose(data, r){
+  
+}
+
+// Set up OSC
 var unrealOsc = new osc.UDPPort({
   localAddress: "0.0.0.0",
   localPort: 8001, //? this won't be receiving osc back at all..
