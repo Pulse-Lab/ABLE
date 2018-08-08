@@ -1,5 +1,28 @@
 import Exercise from "./Exercise.js"
 
+
+try{
+  window.WebSocket = window.WebSocket || window.MozWebSocket;
+} catch (e){
+  alert("Could not initialize WebSocket - please make sure you are using a modern browser or try refreshing the page.")
+  console.log(e);
+}
+
+var ws;
+
+try{
+  ws = new WebSocket ("ws://"+location.hostname+":"+location.port, 'echo-protocol');
+} catch (e){
+  alert("Could not connect to server, please try refreshing the page.")
+  console.log("Couldn't connect to ws: "+e)
+}
+
+ws.addEventListener('message', function(message){
+  console.log("message: "+msg.type)
+})
+
+
+
 var content = document.getElementById("content")
 
 var exercises={};
@@ -12,18 +35,19 @@ request.onload = function() {
    if(request.response == null) throw Error("JSON response null");
    console.log(exercises)
    for (var i in request.response){
-     exercises[i] = new Exercise(request.response[i].category, request.response[i].name);
+     exercises[i] = new Exercise(parseInt(i),request.response[i].category, request.response[i].name);
    }
    loadFirstPage();
  }
 request.send();
 
-document.getElementById('settings').onclick = settingsMenu;
 
-document.getElementById('close').onclick = (x)=>{document.getElementById('settings_menu').style.display='none'}
-
+document.getElementById('settings').onclick = (x)=>{document.getElementById('settings_menu').style.display="block"}
+document.getElementById('close').onclick = hideSettingsMenu;
+document.getElementById('setup').onclick = loadSetupPage
 
 function loadFirstPage(){
+  hideSettingsMenu();
   var categories = {};
   for (var i in exercises){
     var category = exercises[i].category
@@ -82,13 +106,74 @@ function loadExercisePage(exercise){
   document.getElementById('content').innerHTML = exercise.getHtml();
 }
 
-function settingsMenu(){
-  console.log('settings menu')
-  var a = document.getElementById("settings_menu");
-  a.style.display = "block"
-  console.log (a.style.display)
+function loadSetupPage(){
+  hideSettingsMenu();
+  var updatedExercises = {}
+  Object.keys(exercises).forEach(function(key){
+    updatedExercises[key] = exercises[key].clone();
+  })
+
+  var content = document.getElementById('content')
+  content.innerHTML =""
+
+  var setup = document.createElement('div')
+  setup.className = "exercise_setup_container"
+
+  for (var i in updatedExercises){
+    setup.appendChild(updatedExercises[i].getSetterHTML(updatedExercises))
+  }
+
+  content.appendChild(setup);
+
+  var newExercise = document.createElement('div')
+  newExercise.className = "exercise_setup_new"
+  newExercise.appendChild(document.createTextNode("  +  New Exercise"))
+  newExercise.onclick = function(){
+    var newUID = -Infinity;
+    for(var i in updatedExercises){
+      newUID = newUID<updatedExercises[i].uid?updatedExercises[i].uid:newUID;
+    }
+    newUID +=1;
+    updatedExercises[newUID] = new Exercise(newUID);
+    var newDiv = updatedExercises[newUID].getSetterHTML(updatedExercises);
+    newDiv.style.background = "var(--panel-color)"; // slightly different to show it's new
+    setup.appendChild(newDiv);
+  }
+
+
+
+  content.appendChild(newExercise);
+
+  var save = document.createElement('input');
+  save.value = "save";
+  save.type ="button"
+  save.className = "exercise_setup_save"
+  save.onclick = function(){
+    var msg = {
+      type:"updateExercises",
+      value:updatedExercises
+    }
+    try{
+      ws.send(JSON.stringify(msg))
+      exercises = updatedExercises;
+      console.log("changes saved")
+    } catch (e){
+      alert("Oops, there was an error saving changes - please refresh the page and try again.")
+    }
+    loadSetupPage();
+  }
+
+  content.appendChild(save)
+
+  var b = document.getElementById('back_button');
+  b.style.display = ""
+  b.onclick = loadFirstPage;
 }
 
+
+function hideSettingsMenu(){
+  document.getElementById('settings_menu').style.display="none"
+}
 
 function filter (collection, func){
   var r = [];
@@ -99,3 +184,20 @@ function filter (collection, func){
   }
   return r;
 }
+
+
+// // TODO - not 100% sure this works for all things...
+// function copyObj (obj){
+//   const objs = []
+//   for (var i in obj){
+//     if (typeof(obj[i])=="object"){
+//       objs.push(i)
+//     }
+//   }
+//   const o = Object.assign(Object.getPrototypeOf(obj), obj);
+//
+//   for(var i in objs){
+//     o[i] = copyObj(obj[i])
+//   }
+//   return o
+// }

@@ -5,15 +5,11 @@ var nopt = require('nopt')
 var http = require('http');
 var express = require('express');
 var WebSocket = require('ws')
+var fs = require('fs')
+
 
 var server = http.createServer();
 var expressServer = express();
-
-
-
-
-
-
 
 // parse command-line options
 var knownOpts = {
@@ -84,8 +80,22 @@ wsServer.on('connection', function(r){
   r.on('close', (x)=>onClose(x,r));
 });
 
-function onMessage(data, r){
-
+function onMessage(message, r){
+  var msg
+  try{
+    msg = JSON.parse(message);
+  } catch (e){
+    console.log("WARNING: error parsing JSON message: "+e)
+    return
+  }
+  if(msg.type =="updateExercises"){
+    fs.writeFile(dir+"/build/exercises.json", JSON.stringify(msg.value), function(err) {
+      if(err) {
+        return console.log(err);
+      }
+      console.log("The file was saved!");
+    });
+  }
 }
 function onError (data, r){
 
@@ -219,9 +229,10 @@ function exploreCharacteristics(error, characteristics, parentService){
 }
 
 // Scan for peripherals with the camera service UUID:
-noble.on('stateChange', scanForPeripherals);
-noble.on('discover', readPeripheral);
-noble.on('warning', function(w){console.log("warning: "+w)});
+// @
+// noble.on('stateChange', scanForPeripherals);
+// noble.on('discover', readPeripheral);
+// noble.on('warning', function(w){console.log("warning: "+w)});
 
 
 // PARSE and SEND BLE data to Unreal and Python

@@ -1,0 +1,22 @@
+{
+  "0":{
+    "uid":0,
+    "name":"Sit-to-Stand",
+    "category":"Squat"
+  },
+  "1":{
+    "uid":1,
+    "name":"Lunge",
+    "category":"Lunge"
+  },
+  "2":{
+    "uid":2,
+    "name":"Tandem Walk",
+    "category":"Walk"
+  },
+  "3":{
+    "uid":3,
+    "name":"One-foot Balance",
+    "category":"Balance"
+  }
+}
