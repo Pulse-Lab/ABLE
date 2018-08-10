@@ -33,9 +33,8 @@ request.onload = function() {
    if(request.readyState != 4) throw Error("readyState != 4");
    if(request.status != 200) throw Error("status != 200");
    if(request.response == null) throw Error("JSON response null");
-   console.log(exercises)
    for (var i in request.response){
-     exercises[i] = new Exercise(parseInt(i),request.response[i].category, request.response[i].name);
+     exercises[i] = new Exercise(parseInt(i),request.response[i]);
    }
    loadFirstPage();
  }
@@ -58,7 +57,6 @@ function loadFirstPage(){
     }
   }
   content.innerHTML = ""
-  console.log(categories)
   for(var i in categories){
     var div = document.createElement('div')
     div.className =  "exercise_category";
@@ -103,7 +101,14 @@ function loadCategoryPage(category){
 }
 
 function loadExercisePage(exercise){
-  document.getElementById('content').innerHTML = exercise.getHtml();
+  var msg = {type:"change-exercise", value:exercise.name};
+  try{
+    ws.send(JSON.stringify(msg))
+  }catch(e){
+    console.log("WARNing: could not send change exercise message: "+e)
+  }
+  document.getElementById('content').innerHTML = "";
+  document.getElementById('content').appendChild(exercise.getHtml());
 }
 
 function loadSetupPage(){
@@ -138,6 +143,8 @@ function loadSetupPage(){
     var newDiv = updatedExercises[newUID].getSetterHTML(updatedExercises);
     newDiv.style.background = "var(--panel-color)"; // slightly different to show it's new
     setup.appendChild(newDiv);
+    setup.scrollTo(0,setup.scrollHeight);
+    // setup.transition = ""
   }
 
 
@@ -184,20 +191,3 @@ function filter (collection, func){
   }
   return r;
 }
-
-
-// // TODO - not 100% sure this works for all things...
-// function copyObj (obj){
-//   const objs = []
-//   for (var i in obj){
-//     if (typeof(obj[i])=="object"){
-//       objs.push(i)
-//     }
-//   }
-//   const o = Object.assign(Object.getPrototypeOf(obj), obj);
-//
-//   for(var i in objs){
-//     o[i] = copyObj(obj[i])
-//   }
-//   return o
-// }
