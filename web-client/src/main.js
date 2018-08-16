@@ -1,5 +1,5 @@
 import Exercise from "./Exercise.js"
-
+import Util from "./Util.js"
 
 try{
   window.WebSocket = window.WebSocket || window.MozWebSocket;
@@ -71,7 +71,9 @@ function loadFirstPage(){
     }
     content.appendChild(div)
   }
-  document.getElementById('back_button').style.display = "none"
+  // document.getElementById('back_button').style.display = "none"
+  document.getElementById('back_button').hidden = true;
+
 }
 
 function loadCategoryPage(category){
@@ -96,7 +98,8 @@ function loadCategoryPage(category){
   }
 
   var b = document.getElementById('back_button');
-  b.style.display = ""
+  // b.style.display = ""
+  b.hidden = false;
   b.onclick = loadFirstPage;
 }
 
@@ -107,6 +110,7 @@ function loadExercisePage(exercise){
   }catch(e){
     console.log("WARNing: could not send change exercise message: "+e)
   }
+  document.getElementById("back_button").onclick = (x)=>{loadCategoryPage(exercise.category);}
   document.getElementById('content').innerHTML = "";
   document.getElementById('content').appendChild(exercise.getHtml());
 }
@@ -144,7 +148,6 @@ function loadSetupPage(){
     newDiv.style.background = "var(--panel-color)"; // slightly different to show it's new
     setup.appendChild(newDiv);
     setup.scrollTo(0,setup.scrollHeight);
-    // setup.transition = ""
   }
 
 
@@ -156,11 +159,13 @@ function loadSetupPage(){
   save.type ="button"
   save.className = "exercise_setup_save"
   save.onclick = function(){
+
     var msg = {
       type:"updateExercises",
       value:updatedExercises
     }
     try{
+      console.log(updatedExercises);
       ws.send(JSON.stringify(msg))
       exercises = updatedExercises;
       console.log("changes saved")
@@ -173,7 +178,8 @@ function loadSetupPage(){
   content.appendChild(save)
 
   var b = document.getElementById('back_button');
-  b.style.display = ""
+  // b.style.display = ""
+  b.hidden = false;
   b.onclick = loadFirstPage;
 }
 
@@ -181,6 +187,8 @@ function loadSetupPage(){
 function hideSettingsMenu(){
   document.getElementById('settings_menu').style.display="none"
 }
+
+window.a = Util.toZeros
 
 function filter (collection, func){
   var r = [];

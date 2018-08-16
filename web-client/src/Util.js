@@ -13,6 +13,7 @@ Util.dom = function(type, properties,children){
   return r
 }
 
+// takes an Exercise as input
 Util.timeInputWidget = function (initialMin=0,initialSec=0,containerProperties){
   var container = Util.dom("div",containerProperties);
   var minutes = Util.dom("input",{type:"number",value:initialMin, min:0,step:1, className:"setTimer_minutes"});
@@ -36,7 +37,15 @@ Util.timeInputWidget = function (initialMin=0,initialSec=0,containerProperties){
   return container
 }
 
-
+// uhg - num to string. so value 1 becomes 01, etc...
+Util.toZeros = function (val){
+  console.log("toz")
+  if(parseFloat(val)>=10){
+    return val+""
+  } else{
+    return "0"+parseFloat(val)
+  }
+}
 
 
 Util.displayTimerWidget = function (containerProperties){
