@@ -10,6 +10,14 @@ var Exercise = function (uid, options){
   this.time = this.time?this.time:{type:"none"};
 }
 
+// NOTE will have to change this when Exercise gets properties that are objects since Object.assign only goes down one layer
+// (fml)
+// ... ^is this still relevant? seems like object.assign isn't being used anymore... (methinks not)
+Exercise.prototype.clone = function(){
+  return new Exercise(this.uid, this)
+}
+
+
 Exercise.prototype.getHtml = function () {
   var div = Util.dom("div", {className:"exercise", id:this.name});
   //Title
@@ -24,29 +32,22 @@ Exercise.prototype.getHtml = function () {
 
   var row1 = Util.dom("div",{className:"row1"});
   instructions.appendChild(row1)
-  var repsAndTimer = Util.dom("div", {className:"repsAndTimer"});
+  var repsTimerProg = Util.dom("div", {className:"repsAndTimer"});
   var reps = Util.dom("div",{className:"reps"});
   var timer = Util.dom("timer",{className:"timer"});
-  repsAndTimer.appendChild(reps);
-  repsAndTimer.appendChild(timer);
+  var progress = Util.dom("div",{className:"progress"});
+  repsTimerProg.appendChild(reps);
+  repsTimerProg.appendChild(timer);
+  repsTimerProg.appendChild(progress);
 
   var media = Util.dom("div",{className:"media"})
-
-  row1.appendChild(repsAndTimer)
+  row1.appendChild(repsTimerProg)
   row1.appendChild(media);
-
-  // row1.style.height = this.media|(this.time.type!="none"&&  TODO....
-
 
   var text = Util.dom("div",{className:"text",innerHTML:this.instructions});
   instructions.appendChild(text);
-
-  // Progress bar (TODO - ?)
-  var progress = Util.dom("div",{className:"exercise_progress"});
-
   div.appendChild(title)
   div.appendChild(instructions)
-  div.appendChild(progress)
   return div
 }
 
@@ -109,25 +110,27 @@ Exercise.prototype.getSetterHTML = function (exercisesObj){
     div.style.background = "var(--panel-color)"
   };
   div.appendChild(instructions);
+
+  // Timer
   var setTimer = this.setTimerWidget();
   div.appendChild(setTimer);
+
+  // Reps
+  var repSetter = this.setRepsWidget();
+  div.appendChild(repSetter);
+
   return div
 }
 
-// NOTE will have to change this when Exercise gets properties that are objects since Object.assign only goes down one layer
-// (fml)
-Exercise.prototype.clone = function(){
-  return new Exercise(this.uid, this)
-}
 
-Exercise.prototype.setTimerWidget = function (){
+
+// takes an optional argument for the container of this widget
+// so that color of that container can be changed to indicate that this exercise
+// has been changed
+Exercise.prototype.setTimerWidget = function (container){
 
   var closure = this;
   var time = Util.dom("div",{className:"exercise_setup_time"});
-  // If there is a timer or not
-  // var timerCheckBox = Util.dom("input",{innerHTML:"Exercise timer:",type:"checkbox",checked:this.time?true:false});
-  // var timePicker = Util.dom("div",{className:"exercise_setup_time_picker", innerHTML:""});
-  // timePicker.style.display = timerCheckBox.checked?"":none;
   time.appendChild(Util.dom("div",{innerHTML:"Timer: ",style:"display:inline-block"}));
 
   var timeDD = Util.dom("select",{style:"display:inline-block"});
@@ -141,18 +144,14 @@ Exercise.prototype.setTimerWidget = function (){
   timeDD.value = this.time?this.time.type:"none";
 
   var timeWidget = Util.dom("div",{style:"display:inline-block"})
-  // timeWidget.appendChild(this.time.type=="timer"?Util.timeInputWidget(this.time.minutes,this.time.seconds):Util.dom("div",{}))
-
   timeWidget.appendChild(this.time.type=="timer"?this.timeInputWidget():Util.dom("div",{}))
 
   time.appendChild(timeWidget);
   var closure = this;
   timeDD.onchange = function(e){
     timeWidget.innerHTML = ""
+    if(container){container.style.background = "var(--light-panel-color)" }
     if(timeDD.value == "timer"){
-      // var timeInputWidget = Util.timeInputWidget(closure.time.minutes, closure.time.seconds);
-      // var mins = timeInputWidget.childNodes[0];
-      // var secs = timeInputWidget.childNodes[1];
       closure.time.type = "timer"
       timeWidget.appendChild(closure.timeInputWidget());
     } else {
@@ -163,6 +162,8 @@ Exercise.prototype.setTimerWidget = function (){
   }
   return time;
 }
+
+
 
 
 Exercise.prototype.timeInputWidget = function (containerProperties={}){
@@ -178,6 +179,8 @@ Exercise.prototype.timeInputWidget = function (containerProperties={}){
     minutes.value = Math.floor(Util.clip(minutes.value,0,Infinity));
     minutes.value = isNaN(minutes.value)?0:minutes.value;
     closure.time.minutes = Util.clip(parseInt(minutes.value), 0, Infinity);
+    // if(container){container.style.background = "var(--light-panel-color)" }
+
   };
 
   var minutesTxt = Util.dom("div",{innerHTML:"minutes "});
@@ -198,5 +201,31 @@ Exercise.prototype.timeInputWidget = function (containerProperties={}){
 
   return container
 }
+
+
+
+
+Exercise.prototype.setRepsWidget = function(container){
+  var closure = this;
+
+  var div = Util.dom("div",{className:"exercise_setup_reps"});
+  var txt = Util.dom("div",{innerHTML:"Repetitions: "});
+  var setter = Util.dom("input", {min:0, max:Infinity, value:0, type:"number", step:1});
+
+  setter.onchange = function(x){
+    closure.repetitions = setter.value;
+    if(container){container.style.background = "var(--light-panel-color)" }
+  };
+
+  div.appendChild(txt);
+  div.appendChild(setter);
+  return div;
+}
+
+
+
+
+
+
 
 export default Exercise;

@@ -7,10 +7,6 @@ var express = require('express');
 var WebSocket = require('ws')
 var fs = require('fs')
 
-
-var server = http.createServer();
-var expressServer = express();
-
 // parse command-line options
 var knownOpts = {
     "verbose": Boolean,
@@ -39,19 +35,20 @@ if(parsed['help']!=null) {
     process.stderr.write("\n");
     process.stderr.write("ABLE server.js usage:\n\n");
     process.stderr.write(" --help (-h)                    this help message.\n");
-    process.stderr.write(" --verbose (-v) verbose debug messages/printing.\n");
+    process.stderr.write(" --verbose (-v) verbose debug messages/printing.\n\n");
     process.stderr.write(" --unrealIP    <String> (-uIP)  ip address of Unreal engine     (default: 127.0.0.1)\n");
-    process.stderr.write(" --unrealPort  <Number> (-uP)   osc port of Unreal engine       (default: 8000)\n");
+    process.stderr.write(" --unrealPort  <Number> (-uP)   osc port of Unreal engine       (default: 8000)\n\n");
     process.stderr.write(" --pythonIP    <String> (-pIP)  ip address of python receiver   (default: 127.0.0.1)\n");
     process.stderr.write(" --pythonPort  <Number> (-pP)   osc port of python receiver     (default: 9000)\n\n");
+    process.stderr.write(" --scPort  <Number> osc port of SC receiver     (default: 10000)\n");
+    process.stderr.write(" --scIP    <String> ip address of SC receiver   (default: 127.0.0.1)\n\n");
     process.stderr.write(" --httpPort  <Number> (-hP)  port on which httpserver (default: 8080)\n\n");
     process.exit(1);
 }
 
-var verbose = parsed['verbose']!=null
 
 
-// Set up defaults
+// Set up networking ips and ports.
 var unrealIP = parsed["unrealIP"]?parsed["unrealIP"]:"127.0.0.1";
 var unrealPort = parsed["unrealPort"]?parsed["unrealPort"]:8000;
 var pythonIP = parsed["pythonIP"]?parsed["pythonIP"]:"127.0.0.1";
@@ -60,26 +57,34 @@ var scIP = parsed["scIP"]?parsed["scIP"]:"127.0.0.1"
 var scPort = parsed["scPort"]?parsed["scPort"]:10000
 var httpPort = parsed["httpPort"]?parsed["httpPort"]:8080;
 
+// commandline flag --verbose prints more messages (for debugging)
+var verbose = parsed['verbose']!=null
+
 // set up HTTP server
+var server = http.createServer();
+var expressServer = express();
 var dir = __dirname+"/../web-client"
 expressServer.use(express.static(dir));
 console.log("serving web-client: "+dir)
 server.on('request', expressServer)
 server.listen(httpPort, function(){console.log("http server listening")})
-
 var wsServer = new WebSocket.Server({server: server});
 
 var uid =0;
 var numClients=0;
 var clients = {};
+
+// Websocket server to communicate with web client
 wsServer.on('connection', function(r){
   uid++;
   r.uid = uid;
   r.on('message', (x)=>onMessage(x,r));
-  r.on('error', (x)=>onError(x,r));
-  r.on('close', (x)=>onClose(x,r));
+  r.on('error', (x)=>{console.log(x)});
+  r.on('close', (x)=>{console.log("connection closed")});
 });
 
+// WS onMessage handler for communicating with web client
+// - currently just saves new exercises.json file
 function onMessage(message, r){
   var msg
   try{
@@ -95,15 +100,12 @@ function onMessage(message, r){
       }
       console.log("The file was saved!");
     });
+  } else {
+    console.log("Warning: unrecognized message received with type: "+msg.type);
   }
 }
-function onError (data, r){
 
-}
 
-function onClose(data, r){
-
-}
 
 // Set up OSC
 var unrealOsc = new osc.UDPPort({
@@ -127,12 +129,16 @@ var scOsc = new osc.UDPPort({
   remotePort: scPort
 })
 
+// Open osc ports
 pythonOsc.open();
 unrealOsc.open();
 scOsc.open();
 
 
 // Correspond bluetooth services and characteristic uuids to their handler functions
+// so:
+//      bluetoothHandlers[<ble device service uid>][<ble characteristic uid>]
+//         gives us the right handler function for that particualr value
 var bluetoothHandlers = {
   // Left UUID
   "8F65ADD512144F488A8FD32A4AB30576":{
@@ -152,6 +158,7 @@ var bluetoothHandlers = {
   }
 }
 
+// A list of ble characteristic uuids. "AAAA...0001" "AAA...0002", "AAA...0003" etc...
 var targetCharacteristics = Object.keys(bluetoothHandlers["8F65ADD512144F488A8FD32A4AB30576"])
 
 var frames = {
@@ -159,16 +166,26 @@ var frames = {
   right:{frameCount:0}
 }
 
+
+// Noble connection to ble:
+// scanForPeripherals -> readPeripheral -> connectPeripheral -> exploreServices -> exploreCharacteristics
+
 //  callback function for noble stateChange event:
+// (ie. when bluetooth is turned on)
 function scanForPeripherals(state){
   if (state === 'poweredOn') {                // if the Bluetooth radio's on,
-    // noble.startScanning(['1cbffaa8b17d11e680f576304dec7eb7'], false); // scan for service
-    // NOTE - for some reason this needs to be 'true' or on debian it won't discover the bluefruit's advertisement
-    // see :https://github.com/noble/noble/issues/134  - seems to be another fix if don't want this to be true...
-    // TODO - We really want it to be 'true', but the same bluetooth device
-    //        connects twice immediately and clogs services being read on Mac Pro
-    // noble.startScanning(['1800'], false); // scan for service
-    console.log("scanning for services:  "+Object.keys(bluetoothHandlers))
+  console.log("scanning for services:  "+Object.keys(bluetoothHandlers))
+
+
+    // NOTE: some problems we've had with this 'startScanning' function:
+    //  - 2nd argument (a boolean val.) allows or disallows reconnects
+    //  - on debian this needs to be 'true' or it doesn't seem to want to connect
+    //    - see :https://github.com/noble/noble/issues/134 - seems to be some discussion about this
+    //  - on Windows and sometimes Mac, leaving this as 'true' causes it try to connect to the
+    //    ble devices several times at once which causes problems...
+    //  - we probably want it to be 'true' so that if ble devices run out of battery or are
+    //    turned off, they can connect again without having to boot anything again on the computer
+
     noble.startScanning(Object.keys(bluetoothHandlers), false); // scan for service
 
     console.log("Started scanning");
@@ -178,24 +195,22 @@ function scanForPeripherals(state){
   }
 }
 
-// callback function for noble discover event:
+// Called when a peripheral is discovered by Noble
 function readPeripheral (peripheral) {
-
   console.log('discovered ' + peripheral.advertisement.localName);
   console.log('signal strength: ' + peripheral.rssi);
   console.log('device address: ' + peripheral.address);
   peripheral.connect();                    // attempt to connect to peripheral
-  peripheral.on('connect', function(){readServices(peripheral)});  // read services when you connect
+  peripheral.on('connect', function(){connectPeripheral(peripheral)});  // read services when you connect
 }
 
-
-// the readServices function:
-function readServices(peripheral) {
+// Called when peripheral is connected to
+function connectPeripheral(peripheral) {
   console.log("Connected, searching for services...")
   peripheral.discoverServices(Object.keys(bluetoothHandlers), exploreServices);
 }
 
-
+// Called when a peripheral's services are discovered
 function exploreServices(error, services, peripheral){
   if (error){
     console.log("ERROR: "+e)
@@ -211,7 +226,8 @@ function exploreServices(error, services, peripheral){
   }
 }
 
-
+// Called when the characteristics of a ble device's service is discovered
+// Subscribes to messages from the characteristic and sets the appropriate callback
 function exploreCharacteristics(error, characteristics, parentService){
   if(parentService && parentService.uuid){
     console.log("________________________________________")
@@ -229,14 +245,17 @@ function exploreCharacteristics(error, characteristics, parentService){
 }
 
 // Scan for peripherals with the camera service UUID:
-// @
+// NOTE: if able isn't set up on this computer you can run it just as a web server
+//       by commenting out the following 3 'noble.on' lines
 // noble.on('stateChange', scanForPeripherals);
 // noble.on('discover', readPeripheral);
 // noble.on('warning', function(w){console.log("warning: "+w)});
 
 
-// PARSE and SEND BLE data to Unreal and Python
-// 'data' referes to what the BLE devices send, 'sensor' is just a string
+//////////////////////////////////////////////////////////
+//      PARSE and SEND BLE data to Unreal and Python    //
+//////////////////////////////////////////////////////////
+// 'data' referes to what the BLE devices send, 'foot' is just a string
 // with either 'left' or 'right'
 function accelerometer (data, foot){
   var parsedData = parseXYZ(data);
@@ -263,7 +282,17 @@ function toe (data, foot){
   checkAndSendFrame(parsedData, "toe", foot);
 }
 
+
+
+// Each bluetooth message sent by the BLE devices contains an integer that indicates which
+// 'frame' the values pertain to, so that instantaneous readings from the different sensors
+// can be grouped together. A frame is 'full' when it contains values for each of the sensors
+// corresponding to that foot. When a full frame is received over BLE, the frame is sent to python
+// over OSC. The frame number is in data.frameNum. If a frame is full and the frame before it isn't,
+// then it's likely a ble message was dropped somewhere, and a warning is posted to the console.
 function checkAndSendFrame (data, sensor, foot){
+
+  // 'verbose' is set with command line flag --verbose, for debugging
   if (verbose){
     var str = "";
     for (var i in data){
@@ -284,11 +313,14 @@ function checkAndSendFrame (data, sensor, foot){
   //   if it isn't, issue a 'dropped frame' warning and send the newly completed
   //   frame
   if(frameIsFull(frames[foot][data.frameNum])){
+    // Check if previous frame made it through, if not post a warning and erase previous frame
     if(typeof(frames[foot][data.frameNum-1]) != "undefined"){
       console.log("WARNING: frame '" +(data.frameNum-1)+ "' dropped for: "+foot);
       frames[foot][data.frameNum-1] = undefined
     }
     var frame = frames[foot][data.frameNum]
+
+    // Construct an osc message
     var msg = {
       address: "/"+foot+"/all",
       args:[frame.accelerometer.x, frame.accelerometer.y, frame.accelerometer.z,
@@ -298,6 +330,7 @@ function checkAndSendFrame (data, sensor, foot){
             frame.toe.value]
     }
     console.log(pythonPort);
+    // Send all values to Python
     try{
       pythonOsc.send(msg);
       console.log("############################ Sent frame: "+foot+": "+frames[foot].frameCount)
@@ -305,7 +338,7 @@ function checkAndSendFrame (data, sensor, foot){
       console.log("ERROR: could not send frame message over osc to python for: "+foot)
     }
 
-
+    // Construct toe and heel messages and send to SC
     var toe = {
       address: "/"+foot+"/toe",
       args:[frame.toe.value]
@@ -330,16 +363,18 @@ function checkAndSendFrame (data, sensor, foot){
       console.log("ERRROR couldn't send to sc osc :S: "+e)
     }
 
-
     frames[foot].frameCount++;
     frames[foot][data.frameNum]=undefined
   }
 }
 
 
+///////////////////////////////////
+//      Utilities                //
+//////////////////////////////////
 
-
-// Utilities
+// Parsing 3 values and frameNum from a ble message
+// (eg. accelerometer x,y,z and frameNum)
 function parseXYZ (data){
   try{
     var x = data.readIntBE(0,2);
@@ -352,6 +387,8 @@ function parseXYZ (data){
   }
 }
 
+// Parse one value and frameNum
+// eg. toe pressure and frameNum
 function parseOne(data){
   try {
     var parsedData = data.readIntBE(0,2);
@@ -363,6 +400,12 @@ function parseOne(data){
   }
 }
 
+// Frame is full if it contains values for:
+// accelerometer:  x y z
+// gyro:           x y z
+// magnetometer:   x y z
+// toe pressure:   a
+// heel pressure:  a
 function frameIsFull (obj){
   var accelFull = isUndefined(obj.accelerometer)?false:xyzExists(obj.accelerometer);
   var gyroFull = isUndefined(obj.gyro)?false:xyzExists(obj.gyro)

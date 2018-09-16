@@ -188,7 +188,7 @@ function hideSettingsMenu(){
   document.getElementById('settings_menu').style.display="none"
 }
 
-window.a = Util.toZeros
+
 
 function filter (collection, func){
   var r = [];

@@ -129,7 +129,8 @@ body{
 }
 
 
-.exercise_setup_container{
+.
+container{
   height: 78%;
   overflow-y: scroll;
   margin-top:2%;
@@ -157,6 +158,17 @@ input{
   border-radius: 5px;
   width: 100%;
   font-family: helvetica;
+}
+
+.exercise_setup_reps{
+}
+
+.exercise_setup_reps input{
+  width: 50px;
+}
+
+.exercise_setup_reps div{
+  display: inline-block;
 }
 
 .exercise_setup_delete{
@@ -268,15 +280,16 @@ input{
 .exercise_title{
   width:100%;
   height:7%;
-  font-size:80%;
+  font-size:60%;
   text-align:center;
-  margin:auto;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .exercise_instruction{
-  height:78%;
+  height:89%;
   font-size: 50%;
-  margin:2%;
+  margin:1%;
   border-radius: 5px;
 }
 
@@ -296,22 +309,26 @@ input{
   box-sizing: border-box;
 }
 
-.exercise_instruction .timer{
-  height: 50%;
-  width: 100%;
-  display:block;
-  box-sizing: border-box;
-  
-}
-
 .exercise_instruction .reps{
   border-bottom: 2pt solid rgb(200,200,200);
   border-radius: inherit;
   box-sizing: border-box;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  height: 50%;
+  height: 33.333%;
   width: 100%;
+}
+
+.exercise_instruction .timer{
+  height: 33.3333%;
+  width: 100%;
+  border-bottom: 2pt solid rgb(200,200,200);
+  display:block;
+  box-sizing: border-box;
+}
+
+.exercise_instruction .progress{
+  height: 33.3333%;
 }
 
 
@@ -328,16 +345,12 @@ input{
 
 .exercise_instruction .text{
   overflow-y:scroll;
-  height: 29%;
+  height: 28%;
   border-radius: inherit;
   margin-top:1%;
   color:var(--panel-color);
   background:var(--font-color);
 }
 
-
-.exercise_progress{
-  height:15%;
-}
 
 
