@@ -247,9 +247,9 @@ function exploreCharacteristics(error, characteristics, parentService){
 // Scan for peripherals with the camera service UUID:
 // NOTE: if able isn't set up on this computer you can run it just as a web server
 //       by commenting out the following 3 'noble.on' lines
-// noble.on('stateChange', scanForPeripherals);
-// noble.on('discover', readPeripheral);
-// noble.on('warning', function(w){console.log("warning: "+w)});
+noble.on('stateChange', scanForPeripherals);
+noble.on('discover', readPeripheral);
+noble.on('warning', function(w){console.log("warning: "+w)});
 
 
 //////////////////////////////////////////////////////////
