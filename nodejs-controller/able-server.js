@@ -9,6 +9,7 @@ var fs = require('fs')
 
 // parse command-line options
 var knownOpts = {
+    "turnOffBluetooth": Boolean,
     "verbose": Boolean,
     "unrealIP" : [String, null],
     "unrealPort" : [Number, null],
@@ -35,6 +36,7 @@ if(parsed['help']!=null) {
     process.stderr.write("\n");
     process.stderr.write("ABLE server.js usage:\n\n");
     process.stderr.write(" --help (-h)                    this help message.\n");
+    process.stderr.write(" --turnOffBluetooth - if you want to run without listening for BLE messsges\n\n");
     process.stderr.write(" --verbose (-v) verbose debug messages/printing.\n\n");
     process.stderr.write(" --unrealIP    <String> (-uIP)  ip address of Unreal engine     (default: 127.0.0.1)\n");
     process.stderr.write(" --unrealPort  <Number> (-uP)   osc port of Unreal engine       (default: 8000)\n\n");
@@ -56,6 +58,7 @@ var pythonPort = parsed["pythonPort"]?parsed["pythonPort"]:9000;
 var scIP = parsed["scIP"]?parsed["scIP"]:"127.0.0.1"
 var scPort = parsed["scPort"]?parsed["scPort"]:10000
 var httpPort = parsed["httpPort"]?parsed["httpPort"]:8080;
+var turnOffBluetooth = parsed["turnOffBluetooth"]?parsed["turnOffBluetooth"]:false;
 
 // commandline flag --verbose prints more messages (for debugging)
 var verbose = parsed['verbose']!=null
@@ -247,9 +250,11 @@ function exploreCharacteristics(error, characteristics, parentService){
 // Scan for peripherals with the camera service UUID:
 // NOTE: if able isn't set up on this computer you can run it just as a web server
 //       by commenting out the following 3 'noble.on' lines
-noble.on('stateChange', scanForPeripherals);
-noble.on('discover', readPeripheral);
-noble.on('warning', function(w){console.log("warning: "+w)});
+if(!turnOffBluetooth){
+  noble.on('stateChange', scanForPeripherals);
+  noble.on('discover', readPeripheral);
+  noble.on('warning', function(w){console.log("warning: "+w)});
+}
 
 
 //////////////////////////////////////////////////////////
